@@ -117,6 +117,7 @@ class ChatBot:
             "Content-Type": "application/json",
         }
         self.conversation = conversation
+        self._conversation_store = ConversationStore()
 
     def get_chat_response(self, prompt) -> dict:
         data = {
@@ -151,8 +152,7 @@ class ChatBot:
             "conversation_id": self.conversation.id,
             "parent_id": self.conversation.parent_id,
         }
-        save_conversation(self.conversation)
-        cache_set("conversation", message)
+        self._conversation_store.save(self.conversation)
         return message
 
 
