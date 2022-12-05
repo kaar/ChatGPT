@@ -94,7 +94,7 @@ def get_access_token(session_token: str):
         raise
 
 
-class OpenApiSession:
+class OpenApiChatSession:
     def __init__(self, session_token: str):
         self.session_token = session_token
         self._cache = DbmCache(
@@ -133,8 +133,8 @@ class OpenApiSession:
             raise
 
 
-class ChatBot:
-    def __init__(self, session: OpenApiSession, conversation: Conversation):
+class OpenApiChatClient:
+    def __init__(self, session: OpenApiChatSession, conversation: Conversation):
         self.session = session
         self.conversation = conversation
         self._conversation_store = ConversationStore()
@@ -206,8 +206,8 @@ for c in conversations:
 # exit()
 
 conversation = conv_store.get("test")
-session = OpenApiSession(OPENAI_SESSION_TOKEN)
-cb = ChatBot(session, conversation=conversation)
+session = OpenApiChatSession(OPENAI_SESSION_TOKEN)
+cb = OpenApiChatClient(session, conversation=conversation)
 while True:
     prompt = input("You: ")
     resp = cb.get_chat_response(prompt)
