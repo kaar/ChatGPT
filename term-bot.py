@@ -13,21 +13,36 @@ LOGGER.debug("Starting up")
 
 
 XDG_CACHE_HOME = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
-CACHE_FILE = os.path.join(XDG_CACHE_HOME, "chatbot", "") + "cache.db"
-if not os.path.exists(CACHE_FILE):
-    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
 
 
-def cache_get(key: str):
-    with dbm.open(CACHE_FILE, "c") as db:
-        if key in db:
-            return json.loads(db[key])
-    return None
+class DbmCache:
+    def __init__(self, cache_file: str):
+
+        if not os.path.exists(cache_file):
+            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+
+        self.cache_file = cache_file
+
+    def get(self, key: str):
+        with dbm.open(self.cache_file, "c") as db:
+            if key in db:
+                return json.loads(db[key])
+        return None
+
+    def set(self, key: str, value: dict):
+        with dbm.open(self.cache_file, "c") as db:
+            db[key] = json.dumps(value)
+
+    def list(self):
+        with dbm.open(self.cache_file, "c") as db:
+            return list(db.keys())
+
+    def delete(self):
+        # remove file
+        pass
 
 
-def cache_set(key: str, value: dict):
-    with dbm.open(CACHE_FILE, "c") as db:
-        db[key] = json.dumps(value)
+CACHE = DbmCache(os.path.join(XDG_CACHE_HOME, "chatbot", "") + "cache.db")
 
 
 def generate_uuid():
@@ -35,10 +50,46 @@ def generate_uuid():
     return uid
 
 
+@dataclass
+class Conversation:
+    name: str
+    id: str | None = None
+    parent_id: str = generate_uuid()
+
+
+class ConversationStore:
+    def __init__(self):
+        self._cache = DbmCache(
+            os.path.join(XDG_CACHE_HOME, "chatbot", "") + "conversations.db"
+        )
+
+    def get(self, name) -> Conversation:
+        data = self._cache.get(name)
+        if not data:
+            LOGGER.debug("Creating new conversation with name: '%s'", name)
+            return Conversation(name)
+
+        conversation = Conversation(**data)
+        LOGGER.debug(f"Loaded conversation from cache:\n{json.dumps(data, indent=1)}")
+        return conversation
+
+    def save(self, conversation: Conversation):
+        LOGGER.debug(
+            f"Saving conversation to cache:\n{json.dumps(conversation.__dict__, indent=1)}"
+        )
+        self._cache.set(conversation.name, conversation.__dict__)
+
+    def list(self):
+        return self._cache.list()
+
+    def delete(self):
+        return self._cache.delete()
+
+
 def get_access_token(session_token: str):
     LOGGER.debug("Getting access token...")
 
-    access_token = cache_get("access_token")
+    access_token = CACHE.get("access_token")
     if access_token:
         LOGGER.debug("Got access token from cache")
         return access_token
@@ -51,47 +102,22 @@ def get_access_token(session_token: str):
 
         access_token = response.json()["accessToken"]
         LOGGER.debug("Access token: ", access_token)
-        cache_set("access_token", access_token)
+        CACHE.set("access_token", access_token)
         return access_token
     except Exception as e:
         LOGGER.exception(e)
         raise
 
 
-@dataclass
-class Conversation:
-    name: str
-    id: str | None = None
-    parent_id: str = generate_uuid()
-
-
-def get_conversation(name) -> Conversation:
-    data = cache_get(name)
-    if not data:
-        LOGGER.debug("Creating new conversation")
-        return Conversation(name)
-
-    conversation = Conversation(**data)
-    LOGGER.debug(f"Loaded conversation from cache:\n{json.dumps(data, indent=1)}")
-    return conversation
-
-
-def save_conversation(conversation: Conversation):
-    LOGGER.debug(
-        f"Saving conversation to cache. id: {conversation.id}, parent_id: {conversation.parent_id}"
-    )
-    cache_set(conversation.name, conversation.__dict__)
-
-
 class ChatBot:
-    def __init__(self, session_token, conversation_name: str):
+    def __init__(self, session_token, conversation: Conversation):
         self.session_token = session_token
         self.headers = {
             "Accept": "application/json",
             "Authorization": "Bearer " + get_access_token(session_token),
             "Content-Type": "application/json",
         }
-        self.conversation: Conversation = get_conversation(conversation_name)
+        self.conversation = conversation
 
     def get_chat_response(self, prompt) -> dict:
         data = {
@@ -141,7 +167,18 @@ if not OPENAI_SESSION_TOKEN:
 # load_conversation = cache_get("conversation")
 # if load_conversation:
 
-cb = ChatBot(OPENAI_SESSION_TOKEN, conversation_name="test")
+conv_store = ConversationStore()
+conversations = conv_store.list()
+
+print(f"Conversations: {len(conversations)}")
+for c in conversations:
+    print(c)
+
+# conv_store.clear()
+# exit()
+
+conversation = conv_store.get("test")
+cb = ChatBot(OPENAI_SESSION_TOKEN, conversation=conversation)
 while True:
     prompt = input("You: ")
     resp = cb.get_chat_response(prompt)
