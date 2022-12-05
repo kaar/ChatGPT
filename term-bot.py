@@ -80,20 +80,6 @@ class ConversationStore:
         return self._cache.list()
 
 
-def get_access_token(session_token: str):
-    try:
-        LOGGER.debug("Get access token...")
-        session = requests.Session()
-        session.cookies.set("__Secure-next-auth.session-token", session_token)
-        response = session.get("https://chat.openai.com/api/auth/session")
-        response.raise_for_status()
-        access_token = response.json()["accessToken"]
-        return access_token
-    except Exception as e:
-        LOGGER.exception(e)
-        raise
-
-
 class OpenApiChatSession:
     def __init__(self, session_token: str):
         self.session_token = session_token
