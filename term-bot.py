@@ -32,16 +32,14 @@ class DbmCache:
         with dbm.open(self.cache_file, "c") as db:
             db[key] = json.dumps(value)
 
+    def drop(self, key: str):
+        with dbm.open(self.cache_file, "c") as db:
+            if key in db:
+                del db[key]
+
     def list(self):
         with dbm.open(self.cache_file, "c") as db:
             return list(db.keys())
-
-    def delete(self):
-        # remove file
-        pass
-
-
-CACHE = DbmCache(os.path.join(XDG_CACHE_HOME, "chatbot", "") + "cache.db")
 
 
 def generate_uuid():
@@ -81,27 +79,15 @@ class ConversationStore:
     def list(self):
         return self._cache.list()
 
-    def delete(self):
-        return self._cache.delete()
-
 
 def get_access_token(session_token: str):
-    LOGGER.debug("Getting access token...")
-
-    access_token = CACHE.get("access_token")
-    if access_token:
-        LOGGER.debug("Got access token from cache")
-        return access_token
-
     try:
+        LOGGER.debug("Get access token...")
         session = requests.Session()
         session.cookies.set("__Secure-next-auth.session-token", session_token)
         response = session.get("https://chat.openai.com/api/auth/session")
         response.raise_for_status()
-
         access_token = response.json()["accessToken"]
-        LOGGER.debug("Access token: ", access_token)
-        CACHE.set("access_token", access_token)
         return access_token
     except Exception as e:
         LOGGER.exception(e)
@@ -111,13 +97,12 @@ def get_access_token(session_token: str):
 class ChatBot:
     def __init__(self, session_token, conversation: Conversation):
         self.session_token = session_token
-        self.headers = {
-            "Accept": "application/json",
-            "Authorization": "Bearer " + get_access_token(session_token),
-            "Content-Type": "application/json",
-        }
+        self._refresh_access_token()
         self.conversation = conversation
         self._conversation_store = ConversationStore()
+
+    def _refresh_access_token(self):
+        self._access_token = get_access_token(self.session_token)
 
     def get_chat_response(self, prompt) -> dict:
         data = {
@@ -133,11 +118,20 @@ class ChatBot:
             "parent_message_id": self.conversation.parent_id,
             "model": "text-davinci-002-render",
         }
+        headers = {
+            "Accept": "application/json",
+            "Authorization": "Bearer " + self._access_token,
+            "Content-Type": "application/json",
+        }
         response = requests.post(
             "https://chat.openai.com/backend-api/conversation",
-            headers=self.headers,
+            headers=headers,
             data=json.dumps(data),
         )
+        # Unauthorized
+        if response.status_code == 401:
+            self._refresh_access_token()
+
         try:
             response = response.text.splitlines()[-4]
             response = response[6:]
