@@ -9,7 +9,6 @@ import requests
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
-LOGGER.debug("Starting up")
 
 
 XDG_CACHE_HOME = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
