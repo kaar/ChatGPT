@@ -186,22 +186,27 @@ class OpenApiClient:
 
 
 class ChatBot:
-    def __init__(self, client: OpenApiClient, conversation: Conversation):
-        self.conversation = conversation
+    def __init__(self, client: OpenApiClient, conversation_name: str = "default"):
         self._client = client
         self._conversation_store = ConversationStore()
+        self.conversation_name = conversation_name
 
     def run(self):
         while True:
+            conversation = self._conversation_store.get(self.conversation_name)
+
             prompt = input("You: ")
-            message = self._client.conversation(self.conversation, prompt)
+            message = self._client.conversation(conversation, prompt)
             # update conversation
 
-            self.conversation.id = message.conversation_id
-            self.conversation.parent_id = message.parent_id
+            conversation.id = message.conversation_id
+            conversation.parent_id = message.parent_id
+
+            self._conversation_store.save(conversation)
 
             print("Bot:")
             print(message.text)
+
 
 # Load from environment variables
 OPENAI_SESSION_TOKEN = os.environ["OPENAI_SESSION_TOKEN"]
@@ -210,15 +215,8 @@ if not OPENAI_SESSION_TOKEN:
     raise ValueError("Missing OPENAI_SESSION_TOKEN")
 
 
-# load_conversation = cache_get("conversation")
-# if load_conversation:
-
-conv_store = ConversationStore()
-conversations = conv_store.list()
-
-conversation = conv_store.get("test")
 session = OpenApiChatSession(OPENAI_SESSION_TOKEN)
 client = OpenApiClient(session)
 
-chat_bot = ChatBot(client, conversation=conversation)
+chat_bot = ChatBot(client, conversation_name="default")
 chat_bot.run()
