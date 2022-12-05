@@ -94,15 +94,50 @@ def get_access_token(session_token: str):
         raise
 
 
-class ChatBot:
-    def __init__(self, session_token, conversation: Conversation):
+class OpenApiSession:
+    def __init__(self, session_token: str):
         self.session_token = session_token
-        self._refresh_access_token()
+        self._cache = DbmCache(
+            os.path.join(XDG_CACHE_HOME, "chatbot", "") + "session.db"
+        )
+        self._access_token = None
+
+    @property
+    def access_token(self) -> str:
+        if not self._access_token:
+            self._access_token = self._get_access_token()
+        return self._access_token
+
+    def refresh_access_token(self):
+        self._access_token = None
+        self._cache.drop("access_token")
+
+    def _get_access_token(self):
+        access_token = self._cache.get("access_token")
+        if access_token:
+            LOGGER.debug("Access token found in cache.")
+            return access_token
+
+        try:
+            LOGGER.debug("Get access token...")
+            session = requests.Session()
+            session.cookies.set("__Secure-next-auth.session-token", self.session_token)
+            response = session.get("https://chat.openai.com/api/auth/session")
+            response.raise_for_status()
+            access_token = response.json()["accessToken"]
+            LOGGER.debug("Access token retrieved.")
+            self._cache.set("access_token", access_token)
+            return access_token
+        except Exception as e:
+            LOGGER.exception(e)
+            raise
+
+
+class ChatBot:
+    def __init__(self, session: OpenApiSession, conversation: Conversation):
+        self.session = session
         self.conversation = conversation
         self._conversation_store = ConversationStore()
-
-    def _refresh_access_token(self):
-        self._access_token = get_access_token(self.session_token)
 
     def get_chat_response(self, prompt) -> dict:
         data = {
@@ -120,7 +155,7 @@ class ChatBot:
         }
         headers = {
             "Accept": "application/json",
-            "Authorization": "Bearer " + self._access_token,
+            "Authorization": "Bearer " + self.session.access_token,
             "Content-Type": "application/json",
         }
         response = requests.post(
@@ -130,7 +165,7 @@ class ChatBot:
         )
         # Unauthorized
         if response.status_code == 401:
-            self._refresh_access_token()
+            self.session.refresh_access_token()
 
         try:
             response = response.text.splitlines()[-4]
@@ -171,7 +206,8 @@ for c in conversations:
 # exit()
 
 conversation = conv_store.get("test")
-cb = ChatBot(OPENAI_SESSION_TOKEN, conversation=conversation)
+session = OpenApiSession(OPENAI_SESSION_TOKEN)
+cb = ChatBot(session, conversation=conversation)
 while True:
     prompt = input("You: ")
     resp = cb.get_chat_response(prompt)
