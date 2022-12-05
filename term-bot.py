@@ -133,13 +133,18 @@ class OpenApiChatSession:
             raise
 
 
-class OpenApiChatClient:
-    def __init__(self, session: OpenApiChatSession, conversation: Conversation):
-        self.session = session
-        self.conversation = conversation
-        self._conversation_store = ConversationStore()
+@dataclass
+class Message:
+    conversation_id: str
+    parent_id: str
+    text: str
 
-    def get_chat_response(self, prompt) -> dict:
+
+class OpenApiClient:
+    def __init__(self, session: OpenApiChatSession):
+        self.session = session
+
+    def conversation(self, conversation: Conversation, prompt: str) -> Message:
         data = {
             "action": "next",
             "messages": [
@@ -149,8 +154,8 @@ class OpenApiChatClient:
                     "content": {"content_type": "text", "parts": [prompt]},
                 }
             ],
-            "conversation_id": self.conversation.id,
-            "parent_message_id": self.conversation.parent_id,
+            "conversation_id": conversation.id,
+            "parent_message_id": conversation.parent_id,
             "model": "text-davinci-002-render",
         }
         headers = {
@@ -172,17 +177,27 @@ class OpenApiChatClient:
             response = response[6:]
         except:
             raise
-        response = json.loads(response)
-        self.conversation.parent_id = response["message"]["id"]
-        self.conversation.id = response["conversation_id"]
-        message = response["message"]["content"]["parts"][0]
-        message = {
-            "message": message,
-            "conversation_id": self.conversation.id,
-            "parent_id": self.conversation.parent_id,
-        }
-        self._conversation_store.save(self.conversation)
-        return message
+        data = json.loads(response)
+        return Message(
+            conversation_id=data["conversation_id"],
+            parent_id=data["message"]["id"],
+            text=data["message"]["content"]["parts"][0],
+        )
+
+
+class ChatBot:
+    def __init__(self, client: OpenApiClient, conversation: Conversation):
+        self.conversation = conversation
+        self._client = client
+        self._conversation_store = ConversationStore()
+
+    def get_chat_response(self, prompt):
+        message = self._client.conversation(self.conversation, prompt)
+        # update conversation
+        self.conversation.id = message.conversation_id
+        self.conversation.parent_id = message.parent_id
+        text = message.text
+        return text
 
 
 # Load from environment variables
@@ -198,18 +213,12 @@ if not OPENAI_SESSION_TOKEN:
 conv_store = ConversationStore()
 conversations = conv_store.list()
 
-print(f"Conversations: {len(conversations)}")
-for c in conversations:
-    print(c)
-
-# conv_store.clear()
-# exit()
-
 conversation = conv_store.get("test")
 session = OpenApiChatSession(OPENAI_SESSION_TOKEN)
-cb = OpenApiChatClient(session, conversation=conversation)
+client = OpenApiClient(session)
+cb = ChatBot(client, conversation=conversation)
 while True:
     prompt = input("You: ")
-    resp = cb.get_chat_response(prompt)
+    text = cb.get_chat_response(prompt)
     print("Bot:")
-    print(resp["message"])
+    print(text)
