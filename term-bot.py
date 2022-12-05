@@ -191,14 +191,17 @@ class ChatBot:
         self._client = client
         self._conversation_store = ConversationStore()
 
-    def get_chat_response(self, prompt):
-        message = self._client.conversation(self.conversation, prompt)
-        # update conversation
-        self.conversation.id = message.conversation_id
-        self.conversation.parent_id = message.parent_id
-        text = message.text
-        return text
+    def run(self):
+        while True:
+            prompt = input("You: ")
+            message = self._client.conversation(self.conversation, prompt)
+            # update conversation
 
+            self.conversation.id = message.conversation_id
+            self.conversation.parent_id = message.parent_id
+
+            print("Bot:")
+            print(message.text)
 
 # Load from environment variables
 OPENAI_SESSION_TOKEN = os.environ["OPENAI_SESSION_TOKEN"]
@@ -216,9 +219,6 @@ conversations = conv_store.list()
 conversation = conv_store.get("test")
 session = OpenApiChatSession(OPENAI_SESSION_TOKEN)
 client = OpenApiClient(session)
-cb = ChatBot(client, conversation=conversation)
-while True:
-    prompt = input("You: ")
-    text = cb.get_chat_response(prompt)
-    print("Bot:")
-    print(text)
+
+chat_bot = ChatBot(client, conversation=conversation)
+chat_bot.run()
