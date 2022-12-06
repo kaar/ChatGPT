@@ -3,4 +3,7 @@ export OPENAI_SESSION_TOKEN := eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..7qrWh769
 run:
 	@pipenv run python chat_bot.py
 
-.PHONY: run
+chat:
+	@pipenv run python chat.py
+
+.PHONY: run chat
