@@ -64,17 +64,43 @@ class Conversation:
 
 
 @dataclass
+class Content:
+    content_type: str
+    parts: list[str]
+
+
+@dataclass
 class Message:
+    id: str
+    role: str
+    user: str | None
+    create_time: str | None
+    update_time: str | None
+    content: Content
+    end_turn: str | None
+    weight: float
+    metadata: dict
+    recipient: str
+
+
+@dataclass
+class ConversationResponse:
+    message: Message
     conversation_id: str
-    parent_id: str
-    text: str
+    error: str
+
+    @property
+    def text(self) -> str:
+        return self.message.content.parts[0]
 
 
 class OpenAiChatClient:
     def __init__(self, session: OpenAiChatSession):
         self.session = session
 
-    def conversation(self, conversation: Conversation, prompt: str) -> Message:
+    def conversation(
+        self, conversation: Conversation, prompt: str
+    ) -> ConversationResponse:
         data = {
             "action": "next",
             "messages": [
@@ -103,13 +129,54 @@ class OpenAiChatClient:
             self.session.refresh_access_token()
 
         try:
+            # data: {
+            #     "message": {
+            #         "id": "09bdd77f-8195-4cbf-9bfa-0c6d0e992c6a",
+            #         "role": "assistant",
+            #         "user": null,
+            #         "create_time": null,
+            #         "update_time": null,
+            #         "content": {
+            #             "content_type": "text",
+            #             "parts": [
+            #                 "Hello again! Is there anything specific you would like to discuss or ask about? I'm here to help with any questions you have. Let me know if you need any assistance."
+            #             ],
+            #         },
+            #         "end_turn": null,
+            #         "weight": 1.0,
+            #         "metadata": {},
+            #         "recipient": "all",
+            #     },
+            #     "conversation_id": "4e508ea6-1794-4d43-85e3-91210cce8f15",
+            #     "error": null,
+            # }
             response = response.text.splitlines()[-4]
-            response = response[6:]
+            resp = json.loads(response[6:])
+            msg = resp["message"]
+            return ConversationResponse(
+                message=Message(
+                    id=msg["id"],
+                    role=msg["role"],
+                    user=msg["user"],
+                    create_time=msg["create_time"],
+                    update_time=msg["update_time"],
+                    content=Content(
+                        content_type=msg["content"]["content_type"],
+                        parts=msg["content"]["parts"],
+                    ),
+                    end_turn=msg["end_turn"],
+                    weight=msg["weight"],
+                    metadata=msg["metadata"],
+                    recipient=msg["recipient"],
+                ),
+                conversation_id=resp["conversation_id"],
+                error=resp["error"],
+            )
         except:
             raise
-        data = json.loads(response)
-        return Message(
-            conversation_id=data["conversation_id"],
-            parent_id=data["message"]["id"],
-            text=data["message"]["content"]["parts"][0],
-        )
+        # data = json.loads(response)
+        # return Message(
+        #     conversation_id=data["conversation_id"],
+        #     parent_id=data["message"]["id"],
+        #     text=data["message"]["content"]["parts"][0],
+        # )

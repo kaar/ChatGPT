@@ -49,16 +49,16 @@ class ChatBot:
             conversation = self._conversation_store.get(self.conversation_name)
 
             prompt = input("You: ")
-            message = self._client.conversation(conversation, prompt)
+            response = self._client.conversation(conversation, prompt)
             # update conversation
 
-            conversation.id = message.conversation_id
-            conversation.parent_id = message.parent_id
+            conversation.id = response.conversation_id
+            conversation.parent_id = response.message.id
 
             self._conversation_store.save(conversation)
 
             print("Bot:")
-            print(message.text)
+            print(response.text)
 
 
 # Load from environment variables
