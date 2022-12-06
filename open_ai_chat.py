@@ -17,7 +17,7 @@ def generate_uuid():
     return uid
 
 
-class OpenApiChatSession:
+class OpenAiChatSession:
     def __init__(self, session_token: str):
         self.session_token = session_token
         self._cache = DbmCache(
@@ -70,8 +70,8 @@ class Message:
     text: str
 
 
-class OpenApiClient:
-    def __init__(self, session: OpenApiChatSession):
+class OpenAiChatClient:
+    def __init__(self, session: OpenAiChatSession):
         self.session = session
 
     def conversation(self, conversation: Conversation, prompt: str) -> Message:
