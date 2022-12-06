@@ -60,7 +60,7 @@ class OpenAiChatSession:
 class Conversation:
     name: str
     id: str | None = None
-    parent_id: str = generate_uuid()
+    parent_message_id: str = generate_uuid()
 
 
 @dataclass
@@ -111,7 +111,7 @@ class OpenAiChatClient:
                 }
             ],
             "conversation_id": conversation.id,
-            "parent_message_id": conversation.parent_id,
+            "parent_message_id": conversation.parent_message_id,
             "model": "text-davinci-002-render",
         }
         headers = {

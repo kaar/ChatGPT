@@ -53,7 +53,7 @@ class ChatBot:
             # update conversation
 
             conversation.id = response.conversation_id
-            conversation.parent_id = response.message.id
+            conversation.parent_message_id = response.message.id
 
             self._conversation_store.save(conversation)
 
