@@ -17,7 +17,6 @@ def generate_uuid():
 
 @dataclass
 class Conversation:
-    name: str
     id: str | None = None
     parent_message_id: str = generate_uuid()
 
@@ -109,6 +108,8 @@ class OpenAiChatClient:
             self._access_token = None
             # TODO: retry
             raise ValueError("Unauthorized")
+
+        response.raise_for_status()
 
         data = json.loads(response.text.splitlines()[-4][6:])
         msg = data["message"]

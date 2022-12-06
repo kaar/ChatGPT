@@ -22,17 +22,17 @@ class ConversationStore:
         data = self._cache.get(name)
         if not data:
             LOGGER.debug("Creating new conversation with name: '%s'", name)
-            return Conversation(name)
+            return Conversation()
 
         conversation = Conversation(**data)
         LOGGER.debug(f"Loaded conversation from cache:\n{json.dumps(data, indent=1)}")
         return conversation
 
-    def save(self, conversation: Conversation):
+    def save(self, name: str, conversation: Conversation):
         LOGGER.debug(
             f"Saving conversation to cache:\n{json.dumps(conversation.__dict__, indent=1)}"
         )
-        self._cache.set(conversation.name, conversation.__dict__)
+        self._cache.set(name, conversation.__dict__)
 
     def list(self):
         return self._cache.list()
@@ -55,7 +55,7 @@ class ChatBot:
             conversation.id = response.conversation_id
             conversation.parent_message_id = response.message.id
 
-            self._conversation_store.save(conversation)
+            self._conversation_store.save(self.conversation_name, conversation)
 
             print("Bot:")
             print(response.text)
