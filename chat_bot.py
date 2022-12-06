@@ -3,7 +3,7 @@ import logging
 import os
 
 from cache import DbmCache
-from open_ai_chat import Conversation, OpenAiChatSession, OpenAiChatClient
+from open_ai_chat import Conversation, OpenAiChatClient
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARN)
@@ -67,7 +67,6 @@ OPENAI_SESSION_TOKEN = os.environ["OPENAI_SESSION_TOKEN"]
 if not OPENAI_SESSION_TOKEN:
     raise ValueError("Missing OPENAI_SESSION_TOKEN")
 
-session = OpenAiChatSession(OPENAI_SESSION_TOKEN)
-client = OpenAiChatClient(session)
+client = OpenAiChatClient(OPENAI_SESSION_TOKEN)
 chat_bot = ChatBot(client, conversation_name="default")
 chat_bot.run()
