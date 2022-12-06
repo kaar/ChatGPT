@@ -3,13 +3,12 @@
 import logging
 import os
 
-from open_ai_chat import Conversation, OpenAiChatSession, OpenAiChatClient
+from open_ai_chat import Conversation, OpenAiChatClient, OpenAiChatSession
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARN)
 
 
-# Load from environment variables
 OPENAI_SESSION_TOKEN = os.environ["OPENAI_SESSION_TOKEN"]
 
 if not OPENAI_SESSION_TOKEN:
