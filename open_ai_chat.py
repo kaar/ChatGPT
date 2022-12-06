@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import requests
 
-from .cache import DbmCache
+from cache import DbmCache
 
 LOGGER = logging.getLogger(__name__)
 XDG_CACHE_HOME = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))

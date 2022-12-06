@@ -2,8 +2,8 @@ import json
 import logging
 import os
 
-from .cache import DbmCache
-from .open_ai_chat import Conversation, OpenApiChatSession, OpenApiClient
+from cache import DbmCache
+from open_ai_chat import Conversation, OpenApiChatSession, OpenApiClient
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARN)
