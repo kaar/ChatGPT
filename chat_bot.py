@@ -68,6 +68,6 @@ if not OPENAI_SESSION_TOKEN:
     raise ValueError("Missing OPENAI_SESSION_TOKEN")
 
 session = OpenAiChatSession(OPENAI_SESSION_TOKEN)
-client = OpenApiClient(session)
+client = OpenAiChatClient(session)
 chat_bot = ChatBot(client, conversation_name="default")
 chat_bot.run()
