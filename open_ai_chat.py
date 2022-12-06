@@ -98,7 +98,7 @@ class OpenAiChatClient:
 
         if response.status_code == 401:
             LOGGER.debug("Access token expired. Refreshing...")
-            self._access_token = None
+            self._refresh_access_token()
 
         response.raise_for_status()
 
@@ -126,16 +126,17 @@ class OpenAiChatClient:
 
     def access_token(self):
         if not self._access_token:
-            self._access_token = self._get_access_token()
+            self._refresh_access_token()
+
         return self._access_token
 
-    def _get_access_token(self):
+    def _refresh_access_token(self):
         try:
             session = requests.Session()
             session.cookies.set("__Secure-next-auth.session-token", self.session_token)
             response = session.get("https://chat.openai.com/api/auth/session")
             response.raise_for_status()
-            return response.json()["accessToken"]
+            self._access_token = response.json()["accessToken"]
         except requests.exceptions.RequestException as e:
             LOGGER.exception(e)
             raise
