@@ -128,55 +128,24 @@ class OpenAiChatClient:
         if response.status_code == 401:
             self.session.refresh_access_token()
 
-        try:
-            # data: {
-            #     "message": {
-            #         "id": "09bdd77f-8195-4cbf-9bfa-0c6d0e992c6a",
-            #         "role": "assistant",
-            #         "user": null,
-            #         "create_time": null,
-            #         "update_time": null,
-            #         "content": {
-            #             "content_type": "text",
-            #             "parts": [
-            #                 "Hello again! Is there anything specific you would like to discuss or ask about? I'm here to help with any questions you have. Let me know if you need any assistance."
-            #             ],
-            #         },
-            #         "end_turn": null,
-            #         "weight": 1.0,
-            #         "metadata": {},
-            #         "recipient": "all",
-            #     },
-            #     "conversation_id": "4e508ea6-1794-4d43-85e3-91210cce8f15",
-            #     "error": null,
-            # }
-            response = response.text.splitlines()[-4]
-            resp = json.loads(response[6:])
-            msg = resp["message"]
-            return ConversationResponse(
-                message=Message(
-                    id=msg["id"],
-                    role=msg["role"],
-                    user=msg["user"],
-                    create_time=msg["create_time"],
-                    update_time=msg["update_time"],
-                    content=Content(
-                        content_type=msg["content"]["content_type"],
-                        parts=msg["content"]["parts"],
-                    ),
-                    end_turn=msg["end_turn"],
-                    weight=msg["weight"],
-                    metadata=msg["metadata"],
-                    recipient=msg["recipient"],
+        data = json.loads(response.text.splitlines()[-4][6:])
+        msg = data["message"]
+        return ConversationResponse(
+            message=Message(
+                id=msg["id"],
+                role=msg["role"],
+                user=msg["user"],
+                create_time=msg["create_time"],
+                update_time=msg["update_time"],
+                content=Content(
+                    content_type=msg["content"]["content_type"],
+                    parts=msg["content"]["parts"],
                 ),
-                conversation_id=resp["conversation_id"],
-                error=resp["error"],
-            )
-        except:
-            raise
-        # data = json.loads(response)
-        # return Message(
-        #     conversation_id=data["conversation_id"],
-        #     parent_id=data["message"]["id"],
-        #     text=data["message"]["content"]["parts"][0],
-        # )
+                end_turn=msg["end_turn"],
+                weight=msg["weight"],
+                metadata=msg["metadata"],
+                recipient=msg["recipient"],
+            ),
+            conversation_id=data["conversation_id"],
+            error=data["error"],
+        )
