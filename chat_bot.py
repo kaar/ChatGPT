@@ -3,7 +3,7 @@ import logging
 import os
 
 from cache import DbmCache
-from open_ai_chat import Conversation, OpenAiChatClient
+from open_ai_chat import OpenAiChatClient
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARN)
@@ -18,21 +18,16 @@ class ConversationStore:
             os.path.join(XDG_CACHE_HOME, "chatbot", "") + "conversations.db"
         )
 
-    def get(self, name) -> Conversation:
+    def get(self, name, default=None):
         data = self._cache.get(name)
         if not data:
             LOGGER.debug("Creating new conversation with name: '%s'", name)
-            return Conversation()
+            return default
 
-        conversation = Conversation(**data)
-        LOGGER.debug(f"Loaded conversation from cache:\n{json.dumps(data, indent=1)}")
-        return conversation
+        return data
 
-    def save(self, name: str, conversation: Conversation):
-        LOGGER.debug(
-            f"Saving conversation to cache:\n{json.dumps(conversation.__dict__, indent=1)}"
-        )
-        self._cache.set(name, conversation.__dict__)
+    def save(self, name: str, data: dict):
+        self._cache.set(name, data)
 
     def list(self):
         return self._cache.list()
@@ -45,15 +40,19 @@ class ChatBot:
         self.conversation_name = conversation_name
 
     def run(self):
+        conversation = self._conversation_store.get(
+            self.conversation_name,
+            default={"conversation_id": None, "parent_message_id": ""},
+        )
         while True:
-            conversation = self._conversation_store.get(self.conversation_name)
-
             prompt = input("You: ")
-            response = self._client.conversation(conversation, prompt)
-            # update conversation
-
-            conversation.id = response.conversation_id
-            conversation.parent_message_id = response.message.id
+            response = self._client.conversation(
+                prompt,
+                conversation["conversation_id"],
+                conversation["parent_message_id"],
+            )
+            conversation["conversation_id"] = response.conversation_id
+            conversation["parent_message_id"] = response.message.id
 
             self._conversation_store.save(self.conversation_name, conversation)
 

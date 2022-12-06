@@ -14,12 +14,6 @@ def generate_uuid():
 
 
 @dataclass
-class Conversation:
-    id: str | None = None
-    parent_message_id: str = generate_uuid()
-
-
-@dataclass
 class Content:
     content_type: str
     parts: list[str]
@@ -73,7 +67,10 @@ class OpenAiChatClient:
         return self._access_token
 
     def conversation(
-        self, conversation: Conversation, prompt: str
+        self,
+        prompt: str,
+        conversation_id: str | None = None,
+        parent_message_id: str = "",
     ) -> ConversationResponse:
         data = {
             "action": "next",
@@ -84,8 +81,8 @@ class OpenAiChatClient:
                     "content": {"content_type": "text", "parts": [prompt]},
                 }
             ],
-            "conversation_id": conversation.id,
-            "parent_message_id": conversation.parent_message_id,
+            "conversation_id": conversation_id,
+            "parent_message_id": parent_message_id or str(generate_uuid()),
             "model": "text-davinci-002-render",
         }
 
