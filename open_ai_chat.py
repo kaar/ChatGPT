@@ -49,23 +49,6 @@ class OpenAiChatClient:
         self.session_token = session_token
         self._access_token = None
 
-    def _get_access_token(self):
-        try:
-            session = requests.Session()
-            session.cookies.set("__Secure-next-auth.session-token", self.session_token)
-            response = session.get("https://chat.openai.com/api/auth/session")
-            response.raise_for_status()
-            return response.json()["accessToken"]
-        except requests.exceptions.RequestException as e:
-            LOGGER.exception(e)
-            raise
-
-    @property
-    def access_token(self):
-        if not self._access_token:
-            self._access_token = self._get_access_token()
-        return self._access_token
-
     def conversation(
         self,
         prompt: str,
@@ -91,7 +74,7 @@ class OpenAiChatClient:
             try:
                 headers = {
                     "Accept": "application/json",
-                    "Authorization": "Bearer " + self.access_token,
+                    "Authorization": "Bearer " + self.access_token(),
                     "Content-Type": "application/json",
                 }
                 response = requests.post(
@@ -135,3 +118,19 @@ class OpenAiChatClient:
                     raise e
 
         raise RuntimeError("Should not reach here")
+
+    def access_token(self):
+        if not self._access_token:
+            self._access_token = self._get_access_token()
+        return self._access_token
+
+    def _get_access_token(self):
+        try:
+            session = requests.Session()
+            session.cookies.set("__Secure-next-auth.session-token", self.session_token)
+            response = session.get("https://chat.openai.com/api/auth/session")
+            response.raise_for_status()
+            return response.json()["accessToken"]
+        except requests.exceptions.RequestException as e:
+            LOGGER.exception(e)
+            raise
