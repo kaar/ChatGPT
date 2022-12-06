@@ -1,13 +1,11 @@
 import json
 import logging
-import os
 import uuid
 from dataclasses import dataclass
 
 import requests
 
 LOGGER = logging.getLogger(__name__)
-XDG_CACHE_HOME = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
 
 
 def generate_uuid():
@@ -59,15 +57,12 @@ class OpenAiChatClient:
 
     def _get_access_token(self):
         try:
-            LOGGER.debug("Get access token...")
             session = requests.Session()
             session.cookies.set("__Secure-next-auth.session-token", self.session_token)
             response = session.get("https://chat.openai.com/api/auth/session")
             response.raise_for_status()
-            access_token = response.json()["accessToken"]
-            LOGGER.debug("Access token retrieved.")
-            return access_token
-        except Exception as e:
+            return response.json()["accessToken"]
+        except requests.exceptions.RequestException as e:
             LOGGER.exception(e)
             raise
 
